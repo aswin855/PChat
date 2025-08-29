@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PChat - Personal Chat</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: white;
+    }
+
+    /* ---------- Page Container ---------- */
+    .page {
+      display: none;
+      height: 100vh;
+      width: 100vw;
+      justify-content: center;
+      align-items: center;
+    }
+    .active { display: flex; }
+
+    /* ---------- Auth Page ---------- */
+    .auth-container {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 10px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(0,0,0,0.5);
+      animation: fadeIn 0.6s ease;
+    }
+    .auth-container h2 { margin-bottom: 15px; }
+    .auth-container input {
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 5px;
+      border: none;
+    }
+    .auth-container button {
+      background: #38bdf8;
+      color: black;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    .auth-container button:hover { background: #0ea5e9; }
+    .link { color: #38bdf8; cursor: pointer; display:block; margin-top:10px; }
+
+    /* ---------- Chat Page ---------- */
+    .chat-container {
+      display: flex;
+      height: 90%;
+      width: 95%;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 0 15px rgba(0,0,0,0.4);
+      animation: slideUp 0.6s ease;
+    }
+
+    /* Left Panel (Friends) */
+    .friends-panel {
+      width: 25%;
+      background: #111827;
+      padding: 15px;
+      display: flex;
+      flex-direction: column;
+    }
+    .friends-panel h3 { margin-top: 0; }
+    .friends-list, .requests-list, .all-users {
+      margin-top: 10px;
+      background: #1f2937;
+      padding: 10px;
+      border-radius: 5px;
+      flex-grow: 1;
+      overflow-y: auto;
+    }
+    .friend, .user, .request {
+      padding: 8px;
+      border-bottom: 1px solid #333;
+      cursor: pointer;
+    }
+    .friend:hover, .user:hover, .request:hover {
+      background: #374151;
+    }
+    .btn-small {
+      background: #38bdf8;
+      border: none;
+      padding: 5px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-left: 5px;
+    }
+
+    /* Right Panel (Chat) */
+    .chat-panel {
+      flex-grow: 1;
+      background: #1e293b;
+      display: flex;
+      flex-direction: column;
+    }
+    .chat-messages {
+      flex-grow: 1;
+      padding: 15px;
+      overflow-y: auto;
+    }
+    .message {
+      margin: 5px 0;
+      padding: 8px 12px;
+      background: #374151;
+      border-radius: 8px;
+      max-width: 70%;
+    }
+    .me { background: #38bdf8; color: black; margin-left: auto; }
+    .chat-input {
+      display: flex;
+      padding: 10px;
+      background: #111827;
+    }
+    .chat-input input {
+      flex-grow: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+    }
+    .chat-input button {
+      margin-left: 10px;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      background: #38bdf8;
+      cursor: pointer;
+    }
+
+    /* Animations */
+    @keyframes fadeIn {
+      from {opacity: 0; transform: scale(0.9);}
+      to {opacity: 1; transform: scale(1);}
+    }
+    @keyframes slideUp {
+      from {opacity: 0; transform: translateY(50px);}
+      to {opacity: 1; transform: translateY(0);}
+    }
+  </style>
+</head>
+<body>
+
+<!-- Page 1: Auth -->
+<div id="authPage" class="page active">
+  <div class="auth-container">
+    <h2 id="authTitle">Login</h2>
+    <input type="text" id="username" placeholder="Username"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <input type="password" id="confirmPassword" placeholder="Confirm Password" style="display:none;"><br>
+    <button onclick="submitAuth()">Login</button>
+    <span class="link" onclick="showSignup()">Create account</span>
+    <span class="link" onclick="showForgot()">Forgot password?</span>
+    <p id="authMsg"></p>
+  </div>
+</div>
+
+<!-- Page 2: Chat -->
+<div id="chatPage" class="page">
+  <div class="chat-container">
+    <!-- Friends Panel -->
+    <div class="friends-panel">
+      <h3>Friends</h3>
+      <div class="friends-list" id="friendsList"></div>
+
+      <h3>Requests</h3>
+      <div class="requests-list" id="requestsList"></div>
+
+      <h3>All Users</h3>
+      <div class="all-users" id="allUsers"></div>
+    </div>
+
+    <!-- Chat Panel -->
+    <div class="chat-panel">
+      <div class="chat-messages" id="chatMessages"></div>
+      <div class="chat-input">
+        <input type="text" id="chatInput" placeholder="Type a message...">
+        <button onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentUser = null;
+  let currentChat = null;
+
+  function getData(key) {
+    return JSON.parse(localStorage.getItem(key) || "{}");
+  }
+  function setData(key, val) {
+    localStorage.setItem(key, JSON.stringify(val));
+  }
+
+  // ---------- AUTH ----------
+  function submitAuth() {
+    let mode = document.getElementById("authTitle").innerText;
+    let username = document.getElementById("username").value.trim();
+    let password = document.getElementById("password").value;
+    let confirmPassword = document.getElementById("confirmPassword").value;
+    let users = getData("users");
+
+    if (!username || !password) {
+      document.getElementById("authMsg").innerText = "Fill all fields.";
+      return;
+    }
+
+    if (mode === "Login") {
+      if (users[username] && users[username].password === password) {
+        currentUser = username;
+        openChat();
+      } else {
+        document.getElementById("authMsg").innerText = "Invalid login.";
+      }
+    } 
+    else if (mode === "Sign Up") {
+      if (password !== confirmPassword) {
+        document.getElementById("authMsg").innerText = "Passwords do not match.";
+        return;
+      }
+      if (users[username]) {
+        document.getElementById("authMsg").innerText = "User already exists.";
+        return;
+      }
+      users[username] = { password, friends: [], requests: [] };
+      setData("users", users);
+      document.getElementById("authMsg").innerText = "Account created! Please Login.";
+      showLogin();
+    } 
+    else if (mode === "Forgot Password") {
+      if (users[username]) {
+        users[username].password = password;
+        setData("users", users);
+        document.getElementById("authMsg").innerText = "Password reset. Please Login.";
+        showLogin();
+      } else {
+        document.getElementById("authMsg").innerText = "User not found.";
+      }
+    }
+  }
+
+  function showSignup() {
+    document.getElementById("authTitle").innerText = "Sign Up";
+    document.getElementById("confirmPassword").style.display = "block";
+  }
+  function showLogin() {
+    document.getElementById("authTitle").innerText = "Login";
+    document.getElementById("confirmPassword").style.display = "none";
+  }
+  function showForgot() {
+    document.getElementById("authTitle").innerText = "Forgot Password";
+    document.getElementById("confirmPassword").style.display = "none";
+  }
+
+  // ---------- CHAT ----------
+  function openChat() {
+    document.getElementById("authPage").classList.remove("active");
+    document.getElementById("chatPage").classList.add("active");
+    loadFriends();
+    loadUsers();
+  }
+
+  function loadFriends() {
+    let users = getData("users");
+    let me = users[currentUser];
+    let list = document.getElementById("friendsList");
+    list.innerHTML = "";
+    me.friends.forEach(f => {
+      let div = document.createElement("div");
+      div.className = "friend";
+      div.innerText = f;
+      div.onclick = () => openChatWith(f);
+      list.appendChild(div);
+    });
+
+    let reqList = document.getElementById("requestsList");
+    reqList.innerHTML = "";
+    me.requests.forEach(r => {
+      let div = document.createElement("div");
+      div.className = "request";
+      div.innerHTML = r + 
+        `<button class='btn-small' onclick="acceptFriend('${r}')">Accept</button>`;
+      reqList.appendChild(div);
+    });
+  }
+
+  function loadUsers() {
+    let users = getData("users");
+    let me = users[currentUser];
+    let list = document.getElementById("allUsers");
+    list.innerHTML = "";
+    Object.keys(users).forEach(u => {
+      if (u !== currentUser && !me.friends.includes(u)) {
+        let div = document.createElement("div");
+        div.className = "user";
+        div.innerHTML = u + 
+          `<button class='btn-small' onclick="sendRequest('${u}')">Add</button>`;
+        list.appendChild(div);
+      }
+    });
+  }
+
+  function sendRequest(toUser) {
+    let users = getData("users");
+    if (!users[toUser].requests.includes(currentUser)) {
+      users[toUser].requests.push(currentUser);
+      setData("users", users);
+      loadUsers();
+      alert("Friend request sent to " + toUser);
+    }
+  }
+
+  function acceptFriend(fromUser) {
+    let users = getData("users");
+    let me = users[currentUser];
+    if (!me.friends.includes(fromUser)) {
+      me.friends.push(fromUser);
+      users[fromUser].friends.push(currentUser);
+    }
+    me.requests = me.requests.filter(r => r !== fromUser);
+    setData("users", users);
+    loadFriends();
+  }
+
+  function openChatWith(friend) {
+    currentChat = friend;
+    document.getElementById("chatMessages").innerHTML = "";
+    loadMessages();
+  }
+
+  function loadMessages() {
+    if (!currentChat) return;
+    let chats = getData("chats");
+    let convo = chats[[currentUser, currentChat].sort().join("-")] || [];
+    let chatBox = document.getElementById("chatMessages");
+    chatBox.innerHTML = "";
+    convo.forEach(m => {
+      let div = document.createElement("div");
+      div.className = "message " + (m.from === currentUser ? "me" : "");
+      div.innerText = m.text;
+      chatBox.appendChild(div);
+    });
+    chatBox.scrollTop = chatBox.scrollHeight;
+  }
+
+  function sendMessage() {
+    let input = document.getElementById("chatInput");
+    let text = input.value.trim();
+    if (!text || !currentChat) return;
+    let chats = getData("chats");
+    let key = [currentUser, currentChat].sort().join("-");
+    if (!chats[key]) chats[key] = [];
+    chats[key].push({ from: currentUser, text });
+    setData("chats", chats);
+    input.value = "";
+    loadMessages();
+  }
+</script>
+</body>
+</html>
