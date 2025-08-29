@@ -1,368 +1,486 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>PChat - Personal Chat</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0f172a;
-      color: white;
-    }
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PChat — Local Encrypted Chat</title>
+<style>
+  :root{
+    --bg1:#071025; --bg2:#0f1724;
+    --panel: rgba(255,255,255,0.03);
+    --accent1:#6ee7b7; --accent2:#60a5fa;
+    --muted:#9fb2c7;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+  }
+  html,body{height:100%;margin:0;background:linear-gradient(135deg,var(--bg1),var(--bg2));color:#e6eef8;display:flex;align-items:center;justify-content:center;padding:18px}
+  .frame{width:100%;max-width:1150px;height:86vh;border-radius:14px;overflow:hidden;position:relative;box-shadow:0 20px 60px rgba(2,6,23,0.7);background:linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005))}
+  /* overlay page1 */
+  .overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:28px;background:linear-gradient(180deg, rgba(2,6,23,0.6), rgba(2,6,23,0.3));transition:opacity .6s ease, transform .6s ease;z-index:40}
+  .overlay.hidden{opacity:0;transform:scale(1.04);pointer-events:none}
+  .card{width:380px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:26px;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,0.6);text-align:center}
+  .brand{font-size:28px;font-weight:800;margin-bottom:6px;background:linear-gradient(90deg,var(--accent1),var(--accent2));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .muted{color:var(--muted);font-size:13px}
+  .field{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+  input[type=text],input[type=password]{padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;outline:none}
+  .row{display:flex;gap:8px;margin-top:12px}
+  button{cursor:pointer;padding:11px;border-radius:10px;border:none;font-weight:700}
+  .btn-primary{flex:1;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#012}
+  .btn-ghost{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--muted)}
+  .link{margin-top:10px;color:var(--accent1);cursor:pointer;font-size:14px}
+  .small{font-size:13px;color:var(--muted)}
 
-    /* ---------- Page Container ---------- */
-    .page {
-      display: none;
-      height: 100vh;
-      width: 100vw;
-      justify-content: center;
-      align-items: center;
-    }
-    .active { display: flex; }
+  /* app (page2) */
+  .app{display:none;height:100%;width:100%;padding:18px;box-sizing:border-box;display:grid;grid-template-columns:320px 1fr;gap:14px}
+  .app.show{display:grid}
+  .sidebar{background:var(--panel);padding:12px;border-radius:12px;display:flex;flex-direction:column;gap:10px}
+  .title{font-weight:800}
+  .box{background:rgba(255,255,255,0.01);padding:10px;border-radius:10px;overflow:auto;flex:1}
+  .row-item{padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02);display:flex;justify-content:space-between;align-items:center}
+  .row-item .name{font-weight:700}
+  .chat-panel{background:var(--panel);padding:12px;border-radius:12px;display:flex;flex-direction:column}
+  .chat-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .chat-window{flex:1;background:linear-gradient(180deg, rgba(255,255,255,0.006), transparent);padding:12px;border-radius:10px;overflow:auto;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:72%;padding:10px 12px;border-radius:12px;line-height:1.3;box-shadow:0 4px 18px rgba(2,6,23,0.25)}
+  .msg.me{margin-left:auto;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#012}
+  .msg.other{background:rgba(255,255,255,0.03)}
+  .composer{display:flex;gap:8px;margin-top:12px}
+  .composer input{flex:1;padding:12px;border-radius:10px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;outline:none}
+  .composer button{padding:12px 16px;border-radius:10px;border:none;background:linear-gradient(90deg,var(--accent1),var(--accent2));font-weight:700;color:#012}
+  .btn-small{padding:6px 8px;border-radius:8px;border:none;background:linear-gradient(90deg,var(--accent1),var(--accent2));color:#012;cursor:pointer}
 
-    /* ---------- Auth Page ---------- */
-    .auth-container {
-      background: #1e293b;
-      padding: 30px;
-      border-radius: 10px;
-      width: 320px;
-      text-align: center;
-      box-shadow: 0 0 15px rgba(0,0,0,0.5);
-      animation: fadeIn 0.6s ease;
-    }
-    .auth-container h2 { margin-bottom: 15px; }
-    .auth-container input {
-      width: 90%;
-      padding: 10px;
-      margin: 8px 0;
-      border-radius: 5px;
-      border: none;
-    }
-    .auth-container button {
-      background: #38bdf8;
-      color: black;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-top: 10px;
-    }
-    .auth-container button:hover { background: #0ea5e9; }
-    .link { color: #38bdf8; cursor: pointer; display:block; margin-top:10px; }
-
-    /* ---------- Chat Page ---------- */
-    .chat-container {
-      display: flex;
-      height: 90%;
-      width: 95%;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 0 15px rgba(0,0,0,0.4);
-      animation: slideUp 0.6s ease;
-    }
-
-    /* Left Panel (Friends) */
-    .friends-panel {
-      width: 25%;
-      background: #111827;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-    }
-    .friends-panel h3 { margin-top: 0; }
-    .friends-list, .requests-list, .all-users {
-      margin-top: 10px;
-      background: #1f2937;
-      padding: 10px;
-      border-radius: 5px;
-      flex-grow: 1;
-      overflow-y: auto;
-    }
-    .friend, .user, .request {
-      padding: 8px;
-      border-bottom: 1px solid #333;
-      cursor: pointer;
-    }
-    .friend:hover, .user:hover, .request:hover {
-      background: #374151;
-    }
-    .btn-small {
-      background: #38bdf8;
-      border: none;
-      padding: 5px 10px;
-      border-radius: 5px;
-      cursor: pointer;
-      margin-left: 5px;
-    }
-
-    /* Right Panel (Chat) */
-    .chat-panel {
-      flex-grow: 1;
-      background: #1e293b;
-      display: flex;
-      flex-direction: column;
-    }
-    .chat-messages {
-      flex-grow: 1;
-      padding: 15px;
-      overflow-y: auto;
-    }
-    .message {
-      margin: 5px 0;
-      padding: 8px 12px;
-      background: #374151;
-      border-radius: 8px;
-      max-width: 70%;
-    }
-    .me { background: #38bdf8; color: black; margin-left: auto; }
-    .chat-input {
-      display: flex;
-      padding: 10px;
-      background: #111827;
-    }
-    .chat-input input {
-      flex-grow: 1;
-      padding: 10px;
-      border: none;
-      border-radius: 5px;
-    }
-    .chat-input button {
-      margin-left: 10px;
-      padding: 10px 20px;
-      border: none;
-      border-radius: 5px;
-      background: #38bdf8;
-      cursor: pointer;
-    }
-
-    /* Animations */
-    @keyframes fadeIn {
-      from {opacity: 0; transform: scale(0.9);}
-      to {opacity: 1; transform: scale(1);}
-    }
-    @keyframes slideUp {
-      from {opacity: 0; transform: translateY(50px);}
-      to {opacity: 1; transform: translateY(0);}
-    }
-  </style>
+  @media (max-width:980px){ .app{grid-template-columns:1fr} .sidebar{display:none} }
+</style>
 </head>
 <body>
+  <div class="frame">
+    <!-- PAGE 1 (overlay) -->
+    <div id="overlay" class="overlay">
+      <div class="card">
+        <div class="brand">PChat</div>
+        <div id="formArea">
+          <!-- LOGIN -->
+          <div id="loginForm">
+            <div class="field">
+              <input id="loginUser" type="text" placeholder="Username">
+              <input id="loginPass" type="password" placeholder="Password">
+            </div>
+            <div class="row">
+              <button class="btn-primary" id="btnLogin">Login</button>
+              <button class="btn-ghost" id="btnToSign">Sign Up</button>
+            </div>
+            <div class="link" id="btnToForgot">Forgot password?</div>
+            <div class="small" style="margin-top:10px">Create real accounts — no demo users.</div>
+          </div>
 
-<!-- Page 1: Auth -->
-<div id="authPage" class="page active">
-  <div class="auth-container">
-    <h2 id="authTitle">Login</h2>
-    <input type="text" id="username" placeholder="Username"><br>
-    <input type="password" id="password" placeholder="Password"><br>
-    <input type="password" id="confirmPassword" placeholder="Confirm Password" style="display:none;"><br>
-    <button onclick="submitAuth()">Login</button>
-    <span class="link" onclick="showSignup()">Create account</span>
-    <span class="link" onclick="showForgot()">Forgot password?</span>
-    <p id="authMsg"></p>
-  </div>
-</div>
+          <!-- SIGNUP -->
+          <div id="signupForm" style="display:none">
+            <div class="field">
+              <input id="signUser" type="text" placeholder="Choose username (no spaces)">
+              <input id="signPass" type="password" placeholder="Password">
+              <input id="signPass2" type="password" placeholder="Confirm password">
+            </div>
+            <div class="row">
+              <button class="btn-primary" id="btnCreate">Create</button>
+              <button class="btn-ghost" id="btnToLoginFromSign">Cancel</button>
+            </div>
+            <div class="small" style="margin-top:10px">Accounts are stored locally in your browser.</div>
+          </div>
 
-<!-- Page 2: Chat -->
-<div id="chatPage" class="page">
-  <div class="chat-container">
-    <!-- Friends Panel -->
-    <div class="friends-panel">
-      <h3>Friends</h3>
-      <div class="friends-list" id="friendsList"></div>
-
-      <h3>Requests</h3>
-      <div class="requests-list" id="requestsList"></div>
-
-      <h3>All Users</h3>
-      <div class="all-users" id="allUsers"></div>
+          <!-- FORGOT -->
+          <div id="forgotForm" style="display:none">
+            <div class="field">
+              <input id="forgotUser" type="text" placeholder="Username">
+              <input id="forgotNew" type="password" placeholder="New password">
+            </div>
+            <div class="row">
+              <button class="btn-primary" id="btnReset">Reset</button>
+              <button class="btn-ghost" id="btnToLoginFromForgot">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Chat Panel -->
-    <div class="chat-panel">
-      <div class="chat-messages" id="chatMessages"></div>
-      <div class="chat-input">
-        <input type="text" id="chatInput" placeholder="Type a message...">
-        <button onclick="sendMessage()">Send</button>
+    <!-- PAGE 2 (app) -->
+    <div id="app" class="app" aria-hidden="true">
+      <!-- LEFT: Yellow box -> Users / Requests / Invite -->
+      <div class="sidebar">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="title">Users</div>
+          <div class="small" id="labelMe">—</div>
+        </div>
+
+        <div style="margin-top:6px">
+          <input id="inviteInput" type="text" placeholder="Invite (username)" style="width:calc(100% - 84px);padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:inherit;outline:none"/>
+          <button id="inviteBtn" class="btn-small" style="width:72px;margin-top:6px">Send</button>
+        </div>
+
+        <div style="margin-top:8px" class="box">
+          <div style="font-weight:700;margin-bottom:8px">Registered Users</div>
+          <div id="allUsers" style="max-height:160px;overflow:auto"></div>
+        </div>
+
+        <div class="box" style="margin-top:8px">
+          <div style="font-weight:700;margin-bottom:8px">Requests</div>
+          <div id="requests" style="max-height:140px;overflow:auto"></div>
+        </div>
+
+        <div class="box" style="margin-top:8px">
+          <div style="font-weight:700;margin-bottom:8px">Friends</div>
+          <div id="friends" style="max-height:220px;overflow:auto"></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="small">Local • encrypted</div>
+          <div><button id="btnLogout" class="btn-ghost">Logout</button></div>
+        </div>
+      </div>
+
+      <!-- RIGHT: Orange box -> Chat -->
+      <div class="chat-panel">
+        <div class="chat-header">
+          <div>
+            <div id="chatWith" style="font-weight:700">No friend selected</div>
+            <div class="small" id="chatSub">Select a friend to start</div>
+          </div>
+          <div class="small" id="status">PChat</div>
+        </div>
+
+        <div class="chat-window" id="chatWindow">
+          <div class="small" style="text-align:center;margin-top:40px">Messages appear here</div>
+        </div>
+
+        <div class="composer">
+          <input id="msgInput" placeholder="Write a message..." disabled />
+          <button id="sendBtn" disabled>Send</button>
+        </div>
       </div>
     </div>
   </div>
-</div>
 
 <script>
-  let currentUser = null;
-  let currentChat = null;
+/* ---------------------------
+  Local storage schema
+  - pchat_users => { username: { password, displayName, friends:[], requests:[] } }
+  - pchat_msgs_<pair> => [ { from, text: iv:ct (base64), ts } ]
+---------------------------*/
 
-  function getData(key) {
-    return JSON.parse(localStorage.getItem(key) || "{}");
+/* ---------- Basic crypto helpers (Web Crypto) ---------- */
+// App secret (local demo). Change if you want separate encryption.
+const APP_SECRET = 'PCHAT_LOCAL_SECRET_v1';
+const PBKDF2_ITERS = 120000;
+
+// helpers
+const $ = id => document.getElementById(id);
+const utf8 = str => new TextEncoder().encode(str);
+const b64enc = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64dec = str => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+
+function load(key){ try { return JSON.parse(localStorage.getItem(key)); } catch(e){ return null } }
+function save(key,val){ localStorage.setItem(key, JSON.stringify(val)); }
+function getUsers(){ return load('pchat_users') || {} }
+function setUsers(u){ save('pchat_users', u) }
+
+// derive AES-GCM key per pair using PBKDF2 (pairId as salt)
+async function deriveKey(pairId){
+  const salt = utf8(pairId);
+  const base = await crypto.subtle.importKey('raw', utf8(APP_SECRET), {name:'PBKDF2'}, false, ['deriveKey']);
+  return crypto.subtle.deriveKey({
+    name:'PBKDF2',
+    salt,
+    iterations: PBKDF2_ITERS,
+    hash:'SHA-256'
+  }, base, { name:'AES-GCM', length:256 }, false, ['encrypt','decrypt']);
+}
+
+async function encryptForPair(pairId, plaintext){
+  const key = await deriveKey(pairId);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, utf8(plaintext));
+  return `${b64enc(iv)}:${b64enc(ct)}`;
+}
+
+async function decryptForPair(pairId, stored){
+  try{
+    const [ivB64, ctB64] = stored.split(':');
+    if(!ivB64 || !ctB64) return '[invalid]';
+    const key = await deriveKey(pairId);
+    const iv = b64dec(ivB64);
+    const ct = b64dec(ctB64);
+    const plain = await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ct);
+    return new TextDecoder().decode(plain);
+  }catch(e){
+    return '[decryption error]';
   }
-  function setData(key, val) {
-    localStorage.setItem(key, JSON.stringify(val));
-  }
+}
 
-  // ---------- AUTH ----------
-  function submitAuth() {
-    let mode = document.getElementById("authTitle").innerText;
-    let username = document.getElementById("username").value.trim();
-    let password = document.getElementById("password").value;
-    let confirmPassword = document.getElementById("confirmPassword").value;
-    let users = getData("users");
+/* ---------- App logic ---------- */
+let CURRENT = null;
+let OPEN_WITH = null;
 
-    if (!username || !password) {
-      document.getElementById("authMsg").innerText = "Fill all fields.";
-      return;
+function init(){
+  // show overlay login
+  $('overlay').classList.remove('hidden');
+  $('app').classList.remove('show');
+  // wire buttons
+  $('btnToSign').onclick = ()=> showForm('signupForm');
+  $('btnToForgot').onclick = ()=> showForm('forgotForm');
+  $('btnToLoginFromSign').onclick = ()=> showForm('loginForm');
+  $('btnToLoginFromForgot').onclick = ()=> showForm('loginForm');
+
+  $('btnCreate').onclick = handleCreate;
+  $('btnLogin').onclick = handleLogin;
+  $('btnReset').onclick = handleReset;
+  $('inviteBtn').onclick = handleInvite;
+  $('btnLogout').onclick = handleLogout;
+  $('sendBtn').onclick = handleSend;
+
+  // load initial UI state
+  renderAllUsers();
+}
+init();
+
+/* ---------- Forms switching ---------- */
+function showForm(id){
+  $('loginForm').style.display = (id==='loginForm')?'block':'none';
+  $('signupForm').style.display = (id==='signupForm')?'block':'none';
+  $('forgotForm').style.display = (id==='forgotForm')?'block':'none';
+}
+
+/* ---------- Auth actions ---------- */
+function handleCreate(){
+  const u = $('signUser').value.trim();
+  const p = $('signPass').value;
+  const p2 = $('signPass2').value;
+  if(!u || !p){ alert('Enter username & password'); return; }
+  if(/\s/.test(u)){ alert('Username cannot contain spaces'); return; }
+  if(p !== p2){ alert('Passwords do not match'); return; }
+  const users = getUsers();
+  if(users[u]){ alert('User exists'); return; }
+  users[u] = { password: p, displayName: u, friends: [], requests: [] };
+  setUsers(users);
+  alert('Account created. Now login.');
+  showForm('loginForm');
+  renderAllUsers();
+}
+
+function handleLogin(){
+  const u = $('loginUser').value.trim();
+  const p = $('loginPass').value;
+  const users = getUsers();
+  if(!users[u] || users[u].password !== p){ alert('Invalid credentials'); return; }
+  CURRENT = u;
+  afterLogin();
+}
+
+function handleReset(){
+  const u = $('forgotUser').value.trim();
+  const np = $('forgotNew').value;
+  const users = getUsers();
+  if(!users[u]){ alert('User not found'); return; }
+  if(!np){ alert('Enter new password'); return; }
+  users[u].password = np;
+  setUsers(users);
+  alert('Password reset — login now');
+  showForm('loginForm');
+}
+
+/* ---------- After login: animate and show app ---------- */
+function afterLogin(){
+  $('labelMe').innerText = CURRENT;
+  // hide overlay with animation
+  $('overlay').classList.add('hidden');
+  setTimeout(()=>{
+    $('overlay').style.display = 'none';
+    $('app').classList.add('show');
+    $('app').setAttribute('aria-hidden','false');
+    renderAllUsers();
+    renderRequests();
+    renderFriends();
+    clearChat();
+  }, 560);
+}
+
+/* ---------- Logout ---------- */
+function handleLogout(){
+  CURRENT = null;
+  OPEN_WITH = null;
+  $('app').classList.remove('show');
+  $('overlay').style.display = 'flex';
+  setTimeout(()=> $('overlay').classList.remove('hidden'), 20);
+  // reset overlay forms to login
+  showForm('loginForm');
+  $('loginUser').value = ''; $('loginPass').value = '';
+}
+
+/* ---------- Users / Invite / Requests / Friends ---------- */
+function renderAllUsers(){
+  const users = getUsers();
+  const div = $('allUsers');
+  div.innerHTML = '';
+  Object.keys(users).forEach(u=>{
+    const me = users[CURRENT];
+    // show all users (except current)
+    if(u === CURRENT) return;
+    const el = document.createElement('div');
+    el.className = 'row-item';
+    const left = document.createElement('div'); left.className='name'; left.innerText = u;
+    const right = document.createElement('div');
+    // if current exists and already friend => show 'Friend'
+    if(CURRENT && me && me.friends.includes(u)){
+      right.innerHTML = '<span class="small">Friend</span>';
+    } else {
+      // invite button
+      const btn = document.createElement('button');
+      btn.className='btn-small';
+      btn.innerText = 'Request';
+      btn.onclick = (e)=>{ e.stopPropagation(); sendRequest(u); };
+      right.appendChild(btn);
     }
+    el.appendChild(left); el.appendChild(right);
+    div.appendChild(el);
+  });
+}
 
-    if (mode === "Login") {
-      if (users[username] && users[username].password === password) {
-        currentUser = username;
-        openChat();
-      } else {
-        document.getElementById("authMsg").innerText = "Invalid login.";
-      }
-    } 
-    else if (mode === "Sign Up") {
-      if (password !== confirmPassword) {
-        document.getElementById("authMsg").innerText = "Passwords do not match.";
-        return;
-      }
-      if (users[username]) {
-        document.getElementById("authMsg").innerText = "User already exists.";
-        return;
-      }
-      users[username] = { password, friends: [], requests: [] };
-      setData("users", users);
-      document.getElementById("authMsg").innerText = "Account created! Please Login.";
-      showLogin();
-    } 
-    else if (mode === "Forgot Password") {
-      if (users[username]) {
-        users[username].password = password;
-        setData("users", users);
-        document.getElementById("authMsg").innerText = "Password reset. Please Login.";
-        showLogin();
-      } else {
-        document.getElementById("authMsg").innerText = "User not found.";
-      }
-    }
-  }
+function handleInvite(){
+  const name = $('inviteInput').value.trim();
+  if(!name){ alert('Enter username'); return; }
+  sendRequest(name);
+  $('inviteInput').value = '';
+}
 
-  function showSignup() {
-    document.getElementById("authTitle").innerText = "Sign Up";
-    document.getElementById("confirmPassword").style.display = "block";
-  }
-  function showLogin() {
-    document.getElementById("authTitle").innerText = "Login";
-    document.getElementById("confirmPassword").style.display = "none";
-  }
-  function showForgot() {
-    document.getElementById("authTitle").innerText = "Forgot Password";
-    document.getElementById("confirmPassword").style.display = "none";
-  }
+function sendRequest(target){
+  const users = getUsers();
+  if(!users[target]) { alert('User not found — they must sign up first'); return; }
+  if(target === CURRENT) { alert('Cannot invite yourself'); return; }
+  const me = users[CURRENT];
+  if(me.friends.includes(target)){ alert('Already friends'); return; }
+  if(users[target].requests.includes(CURRENT)){ alert('Request already sent'); return; }
+  users[target].requests.push(CURRENT);
+  setUsers(users);
+  alert('Friend request sent to ' + target);
+  renderAllUsers();
+  if(CURRENT) renderRequests();
+}
 
-  // ---------- CHAT ----------
-  function openChat() {
-    document.getElementById("authPage").classList.remove("active");
-    document.getElementById("chatPage").classList.add("active");
-    loadFriends();
-    loadUsers();
-  }
+function renderRequests(){
+  if(!CURRENT) return;
+  const users = getUsers();
+  const reqDiv = $('requests');
+  reqDiv.innerHTML = '';
+  const myReqs = (users[CURRENT].requests || []);
+  myReqs.forEach(r=>{
+    const el = document.createElement('div');
+    el.className = 'row-item';
+    el.innerHTML = `<div class="name">${r}</div><div><button class="btn-small" id="acc_${r}">Accept</button> <button class="btn-small" id="rej_${r}">Reject</button></div>`;
+    reqDiv.appendChild(el);
+    // bind
+    el.querySelector(`#acc_${r}`).onclick = ()=> acceptRequest(r);
+    el.querySelector(`#rej_${r}`).onclick = ()=> rejectRequest(r);
+  });
+}
 
-  function loadFriends() {
-    let users = getData("users");
-    let me = users[currentUser];
-    let list = document.getElementById("friendsList");
-    list.innerHTML = "";
-    me.friends.forEach(f => {
-      let div = document.createElement("div");
-      div.className = "friend";
-      div.innerText = f;
-      div.onclick = () => openChatWith(f);
-      list.appendChild(div);
-    });
-
-    let reqList = document.getElementById("requestsList");
-    reqList.innerHTML = "";
-    me.requests.forEach(r => {
-      let div = document.createElement("div");
-      div.className = "request";
-      div.innerHTML = r + 
-        `<button class='btn-small' onclick="acceptFriend('${r}')">Accept</button>`;
-      reqList.appendChild(div);
-    });
+function acceptRequest(fromUser){
+  const users = getUsers();
+  const me = users[CURRENT];
+  if(!me.friends.includes(fromUser)){
+    me.friends.push(fromUser);
+    users[fromUser].friends = users[fromUser].friends || [];
+    if(!users[fromUser].friends.includes(CURRENT)) users[fromUser].friends.push(CURRENT);
   }
+  // remove request
+  me.requests = me.requests.filter(x=>x!==fromUser);
+  setUsers(users);
+  renderFriends();
+  renderRequests();
+  renderAllUsers();
+}
 
-  function loadUsers() {
-    let users = getData("users");
-    let me = users[currentUser];
-    let list = document.getElementById("allUsers");
-    list.innerHTML = "";
-    Object.keys(users).forEach(u => {
-      if (u !== currentUser && !me.friends.includes(u)) {
-        let div = document.createElement("div");
-        div.className = "user";
-        div.innerHTML = u + 
-          `<button class='btn-small' onclick="sendRequest('${u}')">Add</button>`;
-        list.appendChild(div);
-      }
-    });
-  }
+function rejectRequest(fromUser){
+  const users = getUsers();
+  users[CURRENT].requests = users[CURRENT].requests.filter(x=>x!==fromUser);
+  setUsers(users);
+  renderRequests();
+}
 
-  function sendRequest(toUser) {
-    let users = getData("users");
-    if (!users[toUser].requests.includes(currentUser)) {
-      users[toUser].requests.push(currentUser);
-      setData("users", users);
-      loadUsers();
-      alert("Friend request sent to " + toUser);
-    }
-  }
+/* ---------- Friends list ---------- */
+function renderFriends(){
+  if(!CURRENT) return;
+  const users = getUsers();
+  const me = users[CURRENT];
+  const div = $('friends');
+  div.innerHTML = '';
+  (me.friends||[]).forEach(f=>{
+    const el = document.createElement('div');
+    el.className = 'row-item';
+    el.innerHTML = `<div class="name">${f}</div><div><button class="btn-small" id="chat_${f}">Chat</button></div>`;
+    div.appendChild(el);
+    el.querySelector(`#chat_${f}`).onclick = ()=> openChatWith(f);
+  });
+}
 
-  function acceptFriend(fromUser) {
-    let users = getData("users");
-    let me = users[currentUser];
-    if (!me.friends.includes(fromUser)) {
-      me.friends.push(fromUser);
-      users[fromUser].friends.push(currentUser);
-    }
-    me.requests = me.requests.filter(r => r !== fromUser);
-    setData("users", users);
-    loadFriends();
-  }
+/* ---------- Chat: open / load / send ---------- */
+function pairId(a,b){ return [a,b].sort().join('_'); }
+function msgKey(a,b){ return 'pchat_msgs_' + pairId(a,b); }
 
-  function openChatWith(friend) {
-    currentChat = friend;
-    document.getElementById("chatMessages").innerHTML = "";
-    loadMessages();
-  }
+async function openChatWith(friend){
+  OPEN_WITH = friend;
+  $('chatWith').innerText = friend;
+  $('chatSub').innerText = `Chat with ${friend}`;
+  $('msgInput').disabled = false; $('sendBtn').disabled = false;
+  await loadMessages();
+}
 
-  function loadMessages() {
-    if (!currentChat) return;
-    let chats = getData("chats");
-    let convo = chats[[currentUser, currentChat].sort().join("-")] || [];
-    let chatBox = document.getElementById("chatMessages");
-    chatBox.innerHTML = "";
-    convo.forEach(m => {
-      let div = document.createElement("div");
-      div.className = "message " + (m.from === currentUser ? "me" : "");
-      div.innerText = m.text;
-      chatBox.appendChild(div);
-    });
-    chatBox.scrollTop = chatBox.scrollHeight;
+async function loadMessages(){
+  if(!OPEN_WITH) return;
+  const key = msgKey(CURRENT, OPEN_WITH);
+  const arr = load(key) || [];
+  const win = $('chatWindow'); win.innerHTML = '';
+  for(const m of arr){
+    const text = await decryptForPair(pairId(CURRENT, OPEN_WITH), m.text);
+    const el = document.createElement('div');
+    el.className = 'msg ' + (m.from === CURRENT ? 'me' : 'other');
+    el.innerHTML = `<div>${escapeHtml(text)}</div><div class="small" style="margin-top:6px">${new Date(m.ts).toLocaleString()}</div>`;
+    win.appendChild(el);
   }
+  win.scrollTop = win.scrollHeight;
+}
 
-  function sendMessage() {
-    let input = document.getElementById("chatInput");
-    let text = input.value.trim();
-    if (!text || !currentChat) return;
-    let chats = getData("chats");
-    let key = [currentUser, currentChat].sort().join("-");
-    if (!chats[key]) chats[key] = [];
-    chats[key].push({ from: currentUser, text });
-    setData("chats", chats);
-    input.value = "";
-    loadMessages();
+async function handleSend(){
+  if(!OPEN_WITH) return alert('Choose a friend to chat');
+  const txt = $('msgInput').value.trim();
+  if(!txt) return;
+  const pair = pairId(CURRENT, OPEN_WITH);
+  const cipher = await encryptForPair(pair, txt);
+  const key = msgKey(CURRENT, OPEN_WITH);
+  const arr = load(key) || [];
+  arr.push({ from: CURRENT, text: cipher, ts: new Date().toISOString() });
+  save(key, arr);
+  $('msgInput').value = '';
+  await loadMessages();
+}
+
+/* ---------- Utility ---------- */
+function clearChat(){
+  OPEN_WITH = null;
+  $('chatWith').innerText = 'No friend selected';
+  $('chatSub').innerText = 'Select a friend to start';
+  $('msgInput').disabled = true; $('sendBtn').disabled = true;
+  $('chatWindow').innerHTML = `<div class="small" style="text-align:center;margin-top:40px">Messages appear here</div>`;
+}
+
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+/* render on changes if CURRENT present */
+setInterval(()=>{
+  if(CURRENT){
+    renderAllUsers();
+    renderRequests();
+    renderFriends();
+    if(OPEN_WITH) loadMessages();
   }
+}, 3000);
+
 </script>
 </body>
 </html>
